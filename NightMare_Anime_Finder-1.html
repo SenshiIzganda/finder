@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>NightMare // 探偵システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=M+PLUS+Rounded+1c:wght@400;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#06060f;
+  --s1:#0c0c1a;--s2:#101020;--s3:#161628;
+  --b1:rgba(255,182,193,.07);--b2:rgba(255,182,193,.13);--b3:rgba(255,182,193,.22);
+  --t1:#f0eaff;--t2:#9988bb;--t3:#44335a;
+  --sakura:#ff6b9d;--sakura2:#ff8fb3;--sakura-dim:rgba(255,107,157,.1);--sakura-glow:rgba(255,107,157,.3);
+  --blue:#7eb8ff;--blue-dim:rgba(126,184,255,.08);
+  --gold:#ffd87a;--gold-dim:rgba(255,216,122,.08);
+  --teal:#80ffea;--teal-dim:rgba(128,255,234,.07);
+  --green:#7dffb3;--green-dim:rgba(125,255,179,.08);
+  --red:#ff6b6b;--red-dim:rgba(255,107,107,.1);
+  --mono:'JetBrains Mono',monospace;
+  --jp:'Noto Serif JP',serif;
+  --round:'M PLUS Rounded 1c',sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+html{scroll-behavior:smooth}
+body{min-height:100vh;background:var(--bg);color:var(--t1);font-family:var(--round);font-size:15px;line-height:1.6;overflow-x:hidden}
+
+/* ══ CANVAS BG (sakura petals) ══ */
+#sakura-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+
+/* ══ BG LAYERS ══ */
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg-glow::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,107,157,.07) 0%,transparent 65%);
+  top:-200px;left:50%;transform:translateX(-50%);
+}
+.bg-glow::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,rgba(126,184,255,.05) 0%,transparent 65%);
+  bottom:-100px;right:-50px;animation:bgDrift 14s ease-in-out infinite alternate;
+}
+@keyframes bgDrift{to{transform:translate(-40px,-30px)}}
+
+/* subtle grid */
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,107,157,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,107,157,.025) 1px,transparent 1px);
+  background-size:50px 50px;
+}
+
+/* ══ WRAP ══ */
+.wrap{position:relative;z-index:2;max-width:620px;margin:0 auto;padding:clamp(24px,6vw,52px) clamp(16px,5vw,26px) 100px}
+
+/* ══ HEADER ══ */
+.hdr{text-align:center;margin-bottom:clamp(28px,6vw,44px)}
+
+/* torii gate SVG decoration */
+.torii{margin:0 auto 14px;display:block;opacity:.55;width:70px}
+
+.hdr-jp-title{
+  font-family:var(--jp);font-size:clamp(13px,3vw,16px);
+  color:var(--sakura2);letter-spacing:.35em;margin-bottom:8px;
+  text-shadow:0 0 20px var(--sakura-glow);
+}
+.hdr-main{
+  font-family:var(--jp);font-size:clamp(26px,8vw,44px);font-weight:900;
+  line-height:1;letter-spacing:.05em;margin-bottom:8px;position:relative;display:inline-block;
+  background:linear-gradient(160deg,#fff 0%,var(--sakura2) 35%,var(--blue) 70%,var(--teal) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hdr-nm{
+  display:inline-block;margin-bottom:10px;
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  color:var(--sakura);letter-spacing:.2em;text-transform:uppercase;
+  padding:4px 14px;border-radius:100px;
+  background:var(--sakura-dim);border:1px solid rgba(255,107,157,.22);
+}
+.hdr-nm::before,.hdr-nm::after{content:'·';margin:0 5px;color:var(--sakura2)}
+.hdr-sub{font-size:12px;color:var(--t2);letter-spacing:.06em}
+
+/* ══ TABS ══ */
+.tabs-wrap{
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:16px;padding:5px;margin-bottom:18px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  box-shadow:0 4px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03);
+}
+.tab-btn{
+  padding:10px 6px;border:1px solid transparent;border-radius:12px;
+  font-family:var(--round);font-size:12px;font-weight:800;
+  cursor:pointer;transition:all .25s var(--ease);
+  background:none;color:var(--t3);letter-spacing:.04em;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.tab-btn .ti{font-size:18px;transition:transform .3s var(--spring),filter .3s}
+.tab-btn span{font-size:11px}
+.tab-btn.on{
+  background:linear-gradient(135deg,rgba(255,107,157,.12),rgba(126,184,255,.08));
+  border-color:var(--b2);color:var(--t1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 20px rgba(255,107,157,.06);
+}
+.tab-btn.on .ti{transform:scale(1.25);filter:drop-shadow(0 0 8px var(--sakura-glow))}
+.tab-btn:active{transform:scale(.95)}
+
+/* ══ SEARCH BOX ══ */
+.search-box{
+  position:relative;background:var(--s1);border:1.5px solid var(--b2);
+  border-radius:16px;padding:14px 16px;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+  transition:border-color .3s,box-shadow .3s;
+  overflow:hidden;
+}
+.search-box:focus-within{
+  border-color:var(--sakura);
+  box-shadow:0 0 0 3px rgba(255,107,157,.08),0 4px 30px rgba(255,107,157,.08);
+}
+.search-box::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--sakura),var(--blue),var(--teal),transparent);
+  opacity:0;transition:opacity .3s;animation:lineAnim 3s linear infinite;
+  background-size:200% 100%;
+}
+@keyframes lineAnim{to{background-position:-200% 0}}
+.search-box:focus-within::after{opacity:1}
+
+.s-pre{font-family:var(--jp);font-size:16px;color:var(--t3);flex-shrink:0;transition:color .3s}
+.search-box:focus-within .s-pre{color:var(--sakura)}
+.s-inp{
+  flex:1;min-width:0;background:none;border:none;outline:none;
+  font-family:var(--mono);font-size:clamp(14px,4vw,17px);font-weight:600;
+  color:var(--t1);caret-color:var(--sakura);
+}
+.s-inp::placeholder{color:var(--t3);font-family:var(--round);font-size:13px;font-weight:400}
+.s-btn{
+  flex-shrink:0;border:none;
+  font-family:var(--jp);font-size:12px;font-weight:700;
+  padding:10px 18px;border-radius:12px;cursor:pointer;
+  transition:all .25s var(--ease);white-space:nowrap;letter-spacing:.06em;
+  background:linear-gradient(135deg,var(--sakura),#e040a0);
+  color:#fff;box-shadow:0 4px 18px var(--sakura-glow);
+  position:relative;overflow:hidden;
+}
+.s-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:.2s}
+.s-btn:hover{transform:translateY(-2px);box-shadow:0 6px 26px var(--sakura-glow)}
+.s-btn:hover::before{opacity:1}
+.s-btn:active{transform:scale(.95)}
+.s-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ══ PROGRESS ══ */
+.prog-wrap{overflow:hidden;max-height:0;opacity:0;transition:max-height .35s var(--ease),opacity .3s,margin .3s;margin-bottom:0}
+.prog-wrap.show{max-height:60px;opacity:1;margin-bottom:16px}
+.prog-top{display:flex;justify-content:space-between;margin-bottom:8px}
+.prog-lbl{font-family:var(--mono);font-size:10px;color:var(--t2);letter-spacing:.07em}
+.prog-ct{font-family:var(--mono);font-size:10px;color:var(--sakura);font-weight:700}
+.prog-track{height:3px;background:rgba(255,107,157,.08);border-radius:99px;overflow:hidden}
+.prog-fill{
+  height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--sakura),var(--blue),var(--teal));
+  background-size:200% 100%;transition:width .4s var(--ease);
+  animation:pAnim 2s linear infinite;
+  box-shadow:0 0 8px var(--sakura-glow);
+}
+@keyframes pAnim{to{background-position:-200% 0}}
+
+/* ══ SUMMARY ══ */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;max-height:0;overflow:hidden;opacity:0;transition:max-height .4s var(--ease),opacity .3s}
+.summary.show{max-height:110px;opacity:1}
+.sum-box{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:12px;text-align:center;transition:all .25s;position:relative;overflow:hidden}
+.sum-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sf::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.snf::before{background:linear-gradient(90deg,transparent,var(--t3),transparent)}
+.se::before{background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.sum-box:hover{border-color:var(--b2);transform:translateY(-2px)}
+.sum-n{font-family:var(--jp);font-size:clamp(20px,5vw,26px);font-weight:900;margin-bottom:2px;transition:all .3s var(--spring)}
+.sum-l{font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono)}
+.sf .sum-n{color:var(--green);text-shadow:0 0 14px rgba(125,255,179,.4)}
+.snf .sum-n{color:var(--t3)}
+.se .sum-n{color:var(--gold);text-shadow:0 0 14px rgba(255,216,122,.3)}
+
+/* ══ FILTER TABS ══ */
+.filters{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s,opacity .3s}
+.filters.show{max-height:50px;opacity:1}
+.ftab{font-family:var(--mono);font-size:10px;font-weight:700;padding:5px 13px;border-radius:99px;cursor:pointer;border:1px solid var(--b1);background:none;color:var(--t3);transition:all .18s;letter-spacing:.05em}
+.ftab.on{background:linear-gradient(135deg,var(--sakura),#d63090);border-color:transparent;color:#fff;box-shadow:0 2px 12px var(--sakura-glow)}
+.ftab:hover:not(.on){border-color:var(--b2);color:var(--t1)}
+.ftab:active{transform:scale(.93)}
+
+/* ══ RESULT ROWS ══ */
+.results{display:flex;flex-direction:column;gap:5px}
+.ri{
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:13px;padding:11px 15px;
+  display:flex;align-items:center;gap:11px;
+  transition:all .2s var(--spring);
+  opacity:0;transform:translateY(10px);
+}
+.ri.vis{opacity:1;transform:translateY(0)}
+.ri.notfound{opacity:.3}.ri.notfound:hover{opacity:.55}
+.ri.found{border-color:rgba(125,255,179,.15);background:rgba(125,255,179,.02)}
+.ri.found:hover{border-color:rgba(125,255,179,.3);transform:translateX(3px);box-shadow:0 0 20px rgba(125,255,179,.04)}
+.ri.error{border-color:rgba(255,216,122,.08)}
+.ri.error:hover{border-color:rgba(255,216,122,.18)}
+.ri-ico{font-size:19px;flex-shrink:0;width:28px;text-align:center;transition:transform .2s var(--spring)}
+.ri.found:hover .ri-ico{transform:scale(1.2)}
+.ri-body{flex:1;min-width:0}
+.ri-name{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:1px}
+.ri-url{font-family:var(--mono);font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.ri-right{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.badge{font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 9px;border-radius:6px;letter-spacing:.07em}
+.bf{background:var(--green-dim);border:1px solid rgba(125,255,179,.22);color:var(--green)}
+.bnf{background:var(--b1);border:1px solid var(--b1);color:var(--t3)}
+.bc{background:rgba(255,107,157,.08);border:1px solid rgba(255,107,157,.2);color:var(--sakura2)}
+.be{background:var(--gold-dim);border:1px solid rgba(255,216,122,.18);color:var(--gold)}
+.open-btn{
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  color:#fff;text-decoration:none;padding:4px 10px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(255,107,157,.2),rgba(126,184,255,.15));
+  border:1px solid var(--b2);transition:all .18s;white-space:nowrap;
+}
+.open-btn:hover{background:linear-gradient(135deg,rgba(255,107,157,.35),rgba(126,184,255,.25));transform:scale(1.04)}
+.open-btn:active{transform:scale(.94)}
+
+/* ══ SPIN ══ */
+.spin{display:inline-block;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ══ EMPTY ══ */
+.empty{text-align:center;padding:clamp(40px,10vw,70px) 20px;color:var(--t3)}
+.empty-ic{font-size:38px;display:block;margin-bottom:10px;animation:petFloat 3s ease-in-out infinite}
+@keyframes petFloat{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-10px) rotate(5deg)}}
+.empty-txt{font-size:12px;font-family:var(--jp);letter-spacing:.08em}
+
+/* ══ EMAIL CARDS ══ */
+.email-cards,.phone-cards{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.ecard{
+  background:var(--s1);border:1px solid var(--b1);border-radius:18px;overflow:hidden;
+  opacity:0;transform:translateY(14px);transition:border-color .2s;
+}
+.ecard.vis{animation:cIn .4s var(--spring) forwards}
+@keyframes cIn{to{opacity:1;transform:translateY(0)}}
+.ecard:hover{border-color:var(--b2)}
+.ecard-hdr{
+  display:flex;align-items:center;gap:12px;padding:15px 18px 13px;
+  border-bottom:1px solid var(--b1);
+  background:linear-gradient(135deg,rgba(255,107,157,.04),transparent);
+  position:relative;
+}
+.ecard-hdr::after{content:'';position:absolute;bottom:0;left:18px;right:18px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--sakura-dim),transparent)}
+.ecard-ico{font-size:22px}
+.ecard-title{font-size:14px;font-weight:800;color:var(--t1);margin-bottom:2px;font-family:var(--jp)}
+.ecard-sub{font-size:11px;color:var(--t2);font-family:var(--mono)}
+.ecard-body{padding:15px 18px}
+
+.srow{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:11px;font-size:13px;font-weight:700;letter-spacing:.03em;font-family:var(--round)}
+.s-ok{background:var(--green-dim);border:1px solid rgba(125,255,179,.2);color:var(--green)}
+.s-warn{background:var(--red-dim);border:1px solid rgba(255,107,107,.2);color:var(--red)}
+.s-info{background:var(--blue-dim);border:1px solid rgba(126,184,255,.2);color:var(--blue)}
+.s-load{background:var(--b1);border:1px solid var(--b1);color:var(--t2)}
+
+.breach-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bitem{display:flex;align-items:center;gap:10px;justify-content:space-between;
+  padding:9px 12px;background:var(--red-dim);border:1px solid rgba(255,107,107,.15);
+  border-radius:10px;transition:all .15s}
+.bitem:hover{transform:translateX(2px);background:rgba(255,107,107,.13)}
+.b-name{font-size:12px;font-weight:700;color:var(--red)}
+.b-count{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:1px}
+.b-date{font-family:var(--mono);font-size:10px;color:var(--t3);flex-shrink:0}
+
+.grav-row{display:flex;align-items:center;gap:16px}
+.grav-img{width:62px;height:62px;border-radius:14px;flex-shrink:0;object-fit:cover;
+  border:2px solid rgba(255,107,157,.3);background:var(--s2);transition:all .3s var(--spring);
+  box-shadow:0 0 20px rgba(255,107,157,.15)}
+.grav-img:hover{transform:scale(1.1) rotate(4deg);box-shadow:0 0 30px rgba(255,107,157,.35)}
+.grav-found{font-size:15px;font-weight:800;color:var(--green);margin-bottom:4px;text-shadow:0 0 12px rgba(125,255,179,.4);font-family:var(--jp)}
+.grav-bio{font-size:12px;color:var(--t2);line-height:1.5}
+
+/* ══ PHONE LOOKUP ══ */
+.phone-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.pinfo-box{background:var(--s2);border:1px solid var(--b1);border-radius:11px;padding:11px 13px;transition:all .2s}
+.pinfo-box:hover{border-color:var(--b2);transform:translateY(-1px)}
+.pinfo-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);font-family:var(--mono);margin-bottom:4px}
+.pinfo-val{font-size:14px;font-weight:800;color:var(--t1)}
+.pinfo-val.accent{color:var(--sakura)}
+.pinfo-val.teal{color:var(--teal)}
+.pinfo-val.gold{color:var(--gold)}
+.pinfo-val.blue{color:var(--blue)}
+
+.lookup-links{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.lookup-link{
+  display:flex;align-items:center;gap:12px;padding:12px 15px;
+  background:var(--s2);border:1px solid var(--b1);border-radius:12px;
+  text-decoration:none;color:var(--t1);transition:all .2s;
+}
+.lookup-link:hover{border-color:var(--b2);background:var(--s3);transform:translateX(3px)}
+.ll-icon{font-size:22px;flex-shrink:0}
+.ll-body{flex:1}
+.ll-name{font-size:13px;font-weight:800}
+.ll-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.ll-arrow{color:var(--sakura);font-size:16px;flex-shrink:0}
+
+/* ══ ACTION BTN ══ */
+.action-btn{
+  display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+  font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;text-decoration:none;
+  padding:7px 14px;border-radius:10px;letter-spacing:.06em;
+  background:linear-gradient(135deg,rgba(255,107,157,.2),rgba(126,184,255,.15));
+  border:1px solid var(--b2);transition:all .2s;
+  box-shadow:0 0 15px rgba(255,107,157,.08);
+}
+.action-btn:hover{background:linear-gradient(135deg,rgba(255,107,157,.32),rgba(126,184,255,.25));transform:translateY(-2px)}
+
+.note-txt{margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--t3);line-height:1.7}
+.note-txt a{color:var(--sakura2);text-decoration:none}
+.note-txt a:hover{text-shadow:0 0 10px var(--sakura-glow)}
+
+.disc{margin-top:14px;padding:11px 15px;background:var(--s1);border:1px solid var(--b1);border-left:3px solid var(--gold);border-radius:12px;font-size:11px;color:var(--t2);line-height:1.7;display:none;font-family:var(--mono)}
+.disc strong{color:var(--gold)}
+
+/* ══ FOOTER ══ */
+footer{text-align:center;margin-top:52px;font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.1em;line-height:2.2}
+.ft-jp{font-family:var(--jp);font-size:13px;color:var(--t3)}
+.ft-nm{
+  font-family:var(--jp);font-size:14px;font-weight:900;
+  background:linear-gradient(135deg,var(--sakura),var(--blue),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background-size:200% 100%;animation:nmAnim 3s linear infinite;letter-spacing:.12em;
+}
+@keyframes nmAnim{to{background-position:-200% 0}}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:420px){
+  .ri-url{max-width:110px}
+  .s-btn{padding:9px 12px;font-size:11px}
+  .phone-info{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SAKURA CANVAS -->
+<canvas id="sakura-canvas"></canvas>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <!-- Torii Gate SVG -->
+    <svg class="torii" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="20" width="70" height="5" rx="2.5" fill="#ff6b9d" opacity=".7"/>
+      <rect x="10" y="26" width="60" height="4" rx="2" fill="#ff6b9d" opacity=".5"/>
+      <rect x="12" y="30" width="5" height="30" rx="2.5" fill="#ff6b9d" opacity=".6"/>
+      <rect x="63" y="30" width="5" height="30" rx="2.5" fill="#ff6b9d" opacity=".6"/>
+      <rect x="16" y="14" width="5" height="10" rx="2" fill="#ff6b9d" opacity=".4"/>
+      <rect x="59" y="14" width="5" height="10" rx="2" fill="#ff6b9d" opacity=".4"/>
+    </svg>
+    <div class="hdr-jp-title">探偵システム · 悪夢</div>
+    <div class="hdr-main">ソーシャル探偵</div>
+    <div><span class="hdr-nm" style="font-family:var(--jp);font-size:15px;letter-spacing:.15em;background:linear-gradient(135deg,var(--sakura),var(--blue),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;border:none;background-color:transparent;padding:0">NightMare</span></div>
+    <div class="hdr-sub" style="margin-top:8px">Username · Email Breach · Phone Lookup · 25 Platforms</div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-wrap">
+    <button class="tab-btn on" id="tb-u" onclick="setTab('u')">
+      <span class="ti">👤</span><span>USERNAME</span>
+    </button>
+    <button class="tab-btn" id="tb-e" onclick="setTab('e')">
+      <span class="ti">📧</span><span>EMAIL</span>
+    </button>
+    <button class="tab-btn" id="tb-p" onclick="setTab('p')">
+      <span class="ti">📞</span><span>PHONE</span>
+    </button>
+  </div>
+
+  <!-- ══ USERNAME PANE ══ -->
+  <div id="pane-u">
+    <div class="search-box">
+      <span class="s-pre">@</span>
+      <input class="s-inp" id="u-inp" placeholder="enter username…" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onUI()" onkeydown="if(event.key==='Enter')doSearch()"/>
+      <button class="s-btn" id="u-btn" onclick="doSearch()" disabled>検索</button>
+    </div>
+    <div class="prog-wrap" id="prog">
+      <div class="prog-top"><span class="prog-lbl" id="prog-lbl">SCANNING…</span><span class="prog-ct" id="prog-ct">0 / 25</span></div>
+      <div class="prog-track"><div class="prog-fill" id="prog-bar"></div></div>
+    </div>
+    <div class="summary" id="summ">
+      <div class="sum-box sf"><div class="sum-n" id="sn-f">0</div><div class="sum-l">Found</div></div>
+      <div class="sum-box snf"><div class="sum-n" id="sn-nf">0</div><div class="sum-l">Not Found</div></div>
+      <div class="sum-box se"><div class="sum-n" id="sn-e">0</div><div class="sum-l">Unknown</div></div>
+    </div>
+    <div class="filters" id="ftabs">
+      <button class="ftab on" onclick="filt('all',this)">All</button>
+      <button class="ftab" onclick="filt('found',this)">✓ Found</button>
+      <button class="ftab" onclick="filt('notfound',this)">✗ Not Found</button>
+      <button class="ftab" onclick="filt('error',this)">? Unknown</button>
+    </div>
+    <div class="results" id="res-list">
+      <div class="empty"><span class="empty-ic">🌸</span><span class="empty-txt">// ユーザー名を入力してください</span></div>
+    </div>
+    <div class="disc" id="disc"><strong>⚠ NOTE:</strong> CORS limits direct reads. <strong>Unknown</strong> = click <strong>Check ↗</strong> to verify manually.</div>
+  </div>
+
+  <!-- ══ EMAIL PANE ══ -->
+  <div id="pane-e" style="display:none">
+    <div class="search-box">
+      <span class="s-pre" style="font-size:14px">✉</span>
+      <input class="s-inp" id="e-inp" type="email" placeholder="you@example.com…" maxlength="80" autocomplete="off" spellcheck="false" oninput="onEI()" onkeydown="if(event.key==='Enter')doEmail()"/>
+      <button class="s-btn" id="e-btn" onclick="doEmail()" disabled>検索</button>
+    </div>
+    <div class="email-cards" id="e-res">
+      <div class="empty"><span class="empty-ic">🌸</span><span class="empty-txt">// メールアドレスを入力してください</span></div>
+    </div>
+  </div>
+
+  <!-- ══ PHONE PANE ══ -->
+  <div id="pane-p" style="display:none">
+    <!-- API Key box -->
+    <div id="api-key-box" style="margin-bottom:10px;background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:12px 15px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:15px;flex-shrink:0">🔑</span>
+      <input id="numverify-key" class="s-inp" style="font-size:12px" placeholder="Numverify API key (optional — free at numverify.com)" value="835bc3ad9fbe6db769b5c8a3e0380575" autocomplete="off" spellcheck="false" oninput="saveKey(this.value)"/>
+      <a href="https://numverify.com" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--sakura);text-decoration:none;flex-shrink:0;white-space:nowrap">Get Free ↗</a>
+    </div>
+    <div class="search-box">
+      <span class="s-pre" style="font-size:15px">☎</span>
+      <input class="s-inp" id="p-inp" type="tel" placeholder="+8801712345678 · +447911123456 · +19175551234…" maxlength="20" autocomplete="off" spellcheck="false" oninput="autoPhone(this.value)" onkeydown="if(event.key==='Enter')doPhone()"/>
+    </div>
+    <div class="phone-cards" id="p-res">
+      <div class="empty"><span class="empty-ic">📞</span><span class="empty-txt">// 電話番号を入力してください</span></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="ft-jp">探偵システム · 25プラットフォーム</div>
+    <div>MADE BY <span class="ft-nm">NightMare</span></div>
+    <div>🌸 桜の花びら · ナイトメア 🌸</div>
+  </footer>
+</div>
+
+<script>
+// ══════════════════════════════════
+//  SAKURA PETAL ANIMATION
+// ══════════════════════════════════
+(function(){
+  const cv=document.getElementById('sakura-canvas');
+  const ctx=cv.getContext('2d');
+  let W,H,petals=[];
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight}
+  resize();window.addEventListener('resize',resize);
+
+  function Petal(){
+    this.reset=function(){
+      this.x=Math.random()*W;
+      this.y=-20;
+      this.r=Math.random()*6+3;
+      this.rot=Math.random()*Math.PI*2;
+      this.rotSpeed=(Math.random()-.5)*.04;
+      this.vx=(Math.random()-.5)*1.2;
+      this.vy=Math.random()*.8+.4;
+      this.opacity=Math.random()*.5+.2;
+      this.color=Math.random()>.5?'#ff9ec4':'#ffb8d0';
+      this.swing=Math.random()*Math.PI*2;
+      this.swingSpeed=Math.random()*.03+.01;
+      this.swingAmp=Math.random()*1.5+.5;
+    };
+    this.reset();
+  }
+
+  for(let i=0;i<35;i++){
+    const p=new Petal();
+    p.y=Math.random()*H; // start spread
+    petals.push(p);
+  }
+
+  function drawPetal(p){
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(p.rot);
+    ctx.globalAlpha=p.opacity;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.ellipse(0,0,p.r,p.r*1.6,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,W,H);
+    petals.forEach(p=>{
+      p.swing+=p.swingSpeed;
+      p.x+=p.vx+Math.sin(p.swing)*p.swingAmp;
+      p.y+=p.vy;
+      p.rot+=p.rotSpeed;
+      if(p.y>H+20||p.x<-20||p.x>W+20)p.reset();
+      drawPetal(p);
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ══════════════════════════════════
+//  PLATFORMS
+// ══════════════════════════════════
+const P=[
+  {n:'GitHub',      i:'🐙',u:'https://github.com/{}'},
+  {n:'Reddit',      i:'🟠',u:'https://www.reddit.com/user/{}'},
+  {n:'Twitter / X', i:'🐦',u:'https://x.com/{}'},
+  {n:'Instagram',   i:'📸',u:'https://www.instagram.com/{}/'},
+  {n:'TikTok',      i:'🎵',u:'https://www.tiktok.com/@{}'},
+  {n:'YouTube',     i:'▶️', u:'https://www.youtube.com/@{}'},
+  {n:'LinkedIn',    i:'💼',u:'https://www.linkedin.com/in/{}'},
+  {n:'Pinterest',   i:'📌',u:'https://www.pinterest.com/{}/'},
+  {n:'Twitch',      i:'🎮',u:'https://www.twitch.tv/{}'},
+  {n:'Snapchat',    i:'👻',u:'https://www.snapchat.com/add/{}'},
+  {n:'SoundCloud',  i:'🎧',u:'https://soundcloud.com/{}'},
+  {n:'Spotify',     i:'💚',u:'https://open.spotify.com/user/{}'},
+  {n:'Medium',      i:'✍️', u:'https://medium.com/@{}'},
+  {n:'Tumblr',      i:'🌀',u:'https://www.tumblr.com/{}'},
+  {n:'Flickr',      i:'📷',u:'https://www.flickr.com/people/{}'},
+  {n:'Vimeo',       i:'🎬',u:'https://vimeo.com/{}'},
+  {n:'Steam',       i:'🕹️', u:'https://steamcommunity.com/id/{}'},
+  {n:'Roblox',      i:'🧱',u:'https://www.roblox.com/user.aspx?username={}'},
+  {n:'Patreon',     i:'🎁',u:'https://www.patreon.com/{}'},
+  {n:'Behance',     i:'🎨',u:'https://www.behance.net/{}'},
+  {n:'Dribbble',    i:'🏀',u:'https://dribbble.com/{}'},
+  {n:'Fiverr',      i:'💛',u:'https://www.fiverr.com/{}'},
+  {n:'Telegram',    i:'✈️', u:'https://t.me/{}'},
+  {n:'DevTo',       i:'👩‍💻',u:'https://dev.to/{}'},
+  {n:'Hashnode',    i:'📝',u:'https://hashnode.com/@{}'},
+];
+
+let state={},curFilt='all';
+function pid(n){return'r_'+n.replace(/[^a-z0-9]/gi,'_')}
+
+// ══════════════════════════════════
+//  TAB SWITCH
+// ══════════════════════════════════
+function setTab(t){
+  ['u','e','p'].forEach(id=>{
+    document.getElementById('pane-'+id).style.display=id===t?'':'none';
+    document.getElementById('tb-'+id).classList.toggle('on',id===t);
+  });
+  setTimeout(()=>document.getElementById(t+'-inp').focus(),80);
+}
+
+// ══════════════════════════════════
+//  USERNAME SEARCH
+// ══════════════════════════════════
+function onUI(){document.getElementById('u-btn').disabled=!document.getElementById('u-inp').value.trim()}
+
+function doSearch(){
+  const u=document.getElementById('u-inp').value.trim().replace(/^@/,'');
+  if(!u)return;
+  const btn=document.getElementById('u-btn');
+  btn.disabled=true;btn.textContent='…';
+  state={};curFilt='all';
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.toggle('on',t.textContent==='All'));
+  document.getElementById('summ').classList.remove('show');
+  document.getElementById('ftabs').classList.remove('show');
+  document.getElementById('disc').style.display='none';
+  document.getElementById('prog-bar').style.width='0';
+  ['sn-f','sn-nf','sn-e'].forEach(id=>document.getElementById(id).textContent='0');
+
+  const list=document.getElementById('res-list');
+  list.innerHTML=P.map(p=>`
+    <div class="ri" id="${pid(p.n)}">
+      <div class="ri-ico">${p.i}</div>
+      <div class="ri-body"><div class="ri-name">${p.n}</div><div class="ri-url">${p.u.replace('{}',u)}</div></div>
+      <div class="ri-right"><span class="badge bc"><span class="spin">⟳</span></span></div>
+    </div>`).join('');
+
+  requestAnimationFrame(()=>document.querySelectorAll('.ri').forEach((el,i)=>setTimeout(()=>el.classList.add('vis'),i*22)));
+
+  document.getElementById('prog').classList.add('show');
+  let done=0;const total=P.length;
+
+  function tick(p,status){
+    done++;state[p.n]=status;
+    document.getElementById('prog-bar').style.width=(done/total*100)+'%';
+    document.getElementById('prog-ct').textContent=`${done} / ${total}`;
+    document.getElementById('prog-lbl').textContent=done<total?`SCANNING ${p.n}…`:'完了 ✓';
+    const f=Object.values(state).filter(s=>s==='found').length;
+    const nf=Object.values(state).filter(s=>s==='notfound').length;
+    const e=Object.values(state).filter(s=>s==='error').length;
+    document.getElementById('sn-f').textContent=f;
+    document.getElementById('sn-nf').textContent=nf;
+    document.getElementById('sn-e').textContent=e;
+    const el=document.getElementById(pid(p.n));
+    if(el){
+      const url=p.u.replace('{}',u);
+      let badge='',extra='',cls='';
+      if(status==='found'){badge=`<span class="badge bf">FOUND</span>`;extra=`<a class="open-btn" href="${url}" target="_blank" rel="noopener">Open ↗</a>`;cls='found';}
+      else if(status==='notfound'){badge=`<span class="badge bnf">NOT FOUND</span>`;cls='notfound';}
+      else{badge=`<span class="badge be">UNKNOWN</span>`;extra=`<a class="open-btn" href="${url}" target="_blank" rel="noopener">Check ↗</a>`;cls='error';}
+      el.className=`ri ${cls} vis`;
+      el.style.display=(curFilt==='all'||curFilt===cls)?'':'none';
+      el.querySelector('.ri-right').innerHTML=badge+(extra?' '+extra:'');
+    }
+    if(done===total){
+      btn.disabled=false;btn.textContent='検索';
+      document.getElementById('summ').classList.add('show');
+      document.getElementById('ftabs').classList.add('show');
+      document.getElementById('disc').style.display='block';
+      setTimeout(()=>document.getElementById('prog').classList.remove('show'),2500);
+    }
+  }
+  P.forEach(p=>{
+    fetch(p.u.replace('{}',u),{method:'GET',mode:'no-cors',cache:'no-store'})
+      .then(r=>tick(p,r.type==='opaque'||r.status===0?'found':r.ok?'found':'notfound'))
+      .catch(()=>tick(p,'error'));
+  });
+}
+
+function filt(type,el){
+  curFilt=type;
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.ri').forEach(item=>{
+    item.style.display=type==='all'?'':item.classList.contains(type)?'':'none';
+  });
+}
+
+// ══════════════════════════════════
+//  EMAIL SEARCH
+// ══════════════════════════════════
+function onEI(){const v=document.getElementById('e-inp').value.trim();document.getElementById('e-btn').disabled=!v.includes('@')||v.length<5}
+
+function doEmail(){
+  const email=document.getElementById('e-inp').value.trim();
+  if(!email||!email.includes('@'))return;
+  const btn=document.getElementById('e-btn');
+  btn.disabled=true;btn.textContent='…';
+  const er=document.getElementById('e-res');
+  er.innerHTML=`
+    <div class="ecard" id="ec-b"><div class="ecard-hdr"><span class="ecard-ico">🔓</span><div><div class="ecard-title">データ漏洩チェック</div><div class="ecard-sub">Have I Been Pwned</div></div></div><div class="ecard-body"><div class="srow s-load"><span class="spin">⟳</span> 漏洩データベースを検索中…</div></div></div>
+    <div class="ecard" id="ec-g" style="animation-delay:.1s"><div class="ecard-hdr"><span class="ecard-ico">🖼️</span><div><div class="ecard-title">Gravatar スキャン</div><div class="ecard-sub">gravatar.com global profile</div></div></div><div class="ecard-body"><div class="srow s-load"><span class="spin">⟳</span> プロフィールを検索中…</div></div></div>`;
+  setTimeout(()=>document.querySelectorAll('.ecard').forEach(c=>c.classList.add('vis')),50);
+
+  const hash=md5js(email.trim().toLowerCase());
+  fetch(`https://www.gravatar.com/avatar/${hash}?d=404&s=200`,{mode:'no-cors',cache:'no-store'})
+    .then(r=>{
+      const gc=document.getElementById('ec-g');if(!gc)return;
+      const b=gc.querySelector('.ecard-body');
+      if(r.type==='opaque'||r.status===0){
+        b.innerHTML=`<div class="grav-row"><img class="grav-img" src="https://www.gravatar.com/avatar/${hash}?d=mp&s=200" alt="Gravatar"/><div><div class="grav-found">✓ GRAVATAR FOUND</div><div class="grav-bio">A public profile photo is registered to this email.</div><a class="action-btn" href="https://en.gravatar.com/${hash}" target="_blank" rel="noopener">View Profile ↗</a></div></div>`;
+      } else {
+        b.innerHTML=`<div class="srow s-ok">✓ No Gravatar found for this email</div>`;
+      }
+    }).catch(()=>{
+      const gc=document.getElementById('ec-g');if(!gc)return;
+      gc.querySelector('.ecard-body').innerHTML=`<div class="srow s-info">ℹ️ Could not auto-verify</div><a class="action-btn" href="https://en.gravatar.com" target="_blank">Check Gravatar ↗</a>`;
+    });
+
+  fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`,
+    {headers:{'hibp-api-key':'free'},mode:'cors',cache:'no-store'})
+    .then(async r=>{
+      const bc=document.getElementById('ec-b');if(!bc)return;
+      const b=bc.querySelector('.ecard-body');
+      if(r.status===200){
+        const data=await r.json();
+        b.innerHTML=`<div class="srow s-warn" style="margin-bottom:10px">⚠ ${data.length}件のデータ漏洩に含まれています！</div>
+          <div class="breach-list">${data.map(x=>`<div class="bitem"><div><div class="b-name">⚠ ${x.Name}</div><div class="b-count">${x.PwnCount?x.PwnCount.toLocaleString()+' accounts':''} leaked</div></div><div class="b-date">${x.BreachDate||''}</div></div>`).join('')}</div>
+          <div class="note-txt">Source: <a href="https://haveibeenpwned.com" target="_blank">haveibeenpwned.com</a> — パスワードを今すぐ変更！</div>`;
+      } else if(r.status===404){
+        b.innerHTML=`<div class="srow s-ok">✓ 既知の漏洩データに含まれていません</div><div class="note-txt">Checked via <a href="https://haveibeenpwned.com" target="_blank">haveibeenpwned.com</a></div>`;
+      } else throw '';
+    }).catch(()=>{
+      const bc=document.getElementById('ec-b');if(!bc)return;
+      bc.querySelector('.ecard-body').innerHTML=`<div class="srow s-info" style="margin-bottom:10px">ℹ️ Auto-check needs HIBP API key — check manually:</div>
+        <a class="action-btn" href="https://haveibeenpwned.com/account/${encodeURIComponent(email)}" target="_blank">Check on HIBP ↗</a>
+        <div class="note-txt">Free check for <strong>${email}</strong></div>`;
+    });
+  btn.disabled=false;btn.textContent='検索';
+}
+
+// ══════════════════════════════════
+//  PHONE LOOKUP — Numverify API + Local DB fallback
+// ══════════════════════════════════
+
+// ── SAVE/LOAD API KEY ──
+function saveKey(v){ localStorage.setItem('nmv_key', v.trim()); }
+function loadKey(){ return localStorage.getItem('nmv_key')||''; }
+
+// ── MASSIVE LOCAL CARRIER DB (prefix → info) ──
+const CDB = {
+  /* ═══ BANGLADESH 🇧🇩 ═══ */
+  '88013':  {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880130': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880131': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880132': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880133': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880134': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880135': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880136': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880137': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880138': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880139': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '88017':  {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880170': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880171': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880172': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880173': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880174': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880175': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Postpaid', color:'#00a0e3', flag:'🇧🇩'},
+  '880176': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880177': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880178': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '880179': {carrier:'Grameenphone',    op:'GP',  type:'Mobile',   plan:'Prepaid',  color:'#00a0e3', flag:'🇧🇩'},
+  '88019':  {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880190': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880191': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880192': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Postpaid', color:'#f4831f', flag:'🇧🇩'},
+  '880193': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Postpaid', color:'#f4831f', flag:'🇧🇩'},
+  '880194': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880195': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880196': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880197': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880198': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '880199': {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '88014':  {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '88015':  {carrier:'Banglalink',      op:'BL',  type:'Mobile',   plan:'Prepaid',  color:'#f4831f', flag:'🇧🇩'},
+  '88016':  {carrier:'Airtel BD',       op:'AT',  type:'Mobile',   plan:'Prepaid',  color:'#ef233c', flag:'🇧🇩'},
+  '880160': {carrier:'Airtel BD',       op:'AT',  type:'Mobile',   plan:'Prepaid',  color:'#ef233c', flag:'🇧🇩'},
+  '880161': {carrier:'Airtel BD',       op:'AT',  type:'Mobile',   plan:'Prepaid',  color:'#ef233c', flag:'🇧🇩'},
+  '880162': {carrier:'Airtel BD',       op:'AT',  type:'Mobile',   plan:'Postpaid', color:'#ef233c', flag:'🇧🇩'},
+  '880163': {carrier:'Airtel BD',       op:'AT',  type:'Mobile',   plan:'Postpaid', color:'#ef233c', flag:'🇧🇩'},
+  '88018':  {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880180': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880181': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880182': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Postpaid', color:'#e2001a', flag:'🇧🇩'},
+  '880183': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Postpaid', color:'#e2001a', flag:'🇧🇩'},
+  '880184': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880185': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880186': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880187': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880188': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '880189': {carrier:'Robi Axiata',     op:'RB',  type:'Mobile',   plan:'Prepaid',  color:'#e2001a', flag:'🇧🇩'},
+  '88011':  {carrier:'Teletalk',        op:'TT',  type:'Mobile',   plan:'Prepaid',  color:'#009b4e', flag:'🇧🇩'},
+  '880110': {carrier:'Teletalk',        op:'TT',  type:'Mobile',   plan:'Prepaid',  color:'#009b4e', flag:'🇧🇩'},
+  '880111': {carrier:'Teletalk',        op:'TT',  type:'Mobile',   plan:'Postpaid', color:'#009b4e', flag:'🇧🇩'},
+  '880112': {carrier:'Teletalk',        op:'TT',  type:'Mobile',   plan:'Postpaid', color:'#009b4e', flag:'🇧🇩'},
+  /* ═══ INDIA 🇮🇳 ═══ */
+  '9198':   {carrier:'Airtel IN',       op:'AT',  type:'Mobile',   plan:'Both',     color:'#ef233c', flag:'🇮🇳'},
+  '9196':   {carrier:'Vodafone IN',     op:'VI',  type:'Mobile',   plan:'Both',     color:'#e60000', flag:'🇮🇳'},
+  '9197':   {carrier:'Jio',             op:'JIO', type:'Mobile',   plan:'Prepaid',  color:'#1a73e8', flag:'🇮🇳'},
+  '9199':   {carrier:'Jio',             op:'JIO', type:'Mobile',   plan:'Both',     color:'#1a73e8', flag:'🇮🇳'},
+  '9194':   {carrier:'BSNL',            op:'BSN', type:'Mobile',   plan:'Both',     color:'#1a6b3c', flag:'🇮🇳'},
+  '9195':   {carrier:'Aircel',          op:'ACL', type:'Mobile',   plan:'Prepaid',  color:'#0074b7', flag:'🇮🇳'},
+  /* ═══ PAKISTAN 🇵🇰 ═══ */
+  '92300': {carrier:'Ufone',            op:'UF',  type:'Mobile',   plan:'Prepaid',  color:'#00a651', flag:'🇵🇰'},
+  '92301': {carrier:'Ufone',            op:'UF',  type:'Mobile',   plan:'Prepaid',  color:'#00a651', flag:'🇵🇰'},
+  '92302': {carrier:'Ufone',            op:'UF',  type:'Mobile',   plan:'Postpaid', color:'#00a651', flag:'🇵🇰'},
+  '92311': {carrier:'Mobilink/Jazz',    op:'JZ',  type:'Mobile',   plan:'Prepaid',  color:'#ffcc00', flag:'🇵🇰'},
+  '92321': {carrier:'Zong',             op:'ZG',  type:'Mobile',   plan:'Prepaid',  color:'#9c1414', flag:'🇵🇰'},
+  '92333': {carrier:'Mobilink/Jazz',    op:'JZ',  type:'Mobile',   plan:'Both',     color:'#ffcc00', flag:'🇵🇰'},
+  '92345': {carrier:'Telenor PK',       op:'TN',  type:'Mobile',   plan:'Both',     color:'#007dc5', flag:'🇵🇰'},
+  /* ═══ UK 🇬🇧 ═══ */
+  '4407':  {carrier:'UK Mobile',        op:'UK',  type:'Mobile',   plan:'Both',     color:'#cf142b', flag:'🇬🇧'},
+  '44074': {carrier:'EE',               op:'EE',  type:'Mobile',   plan:'Both',     color:'#00b900', flag:'🇬🇧'},
+  '44075': {carrier:'Vodafone UK',      op:'VF',  type:'Mobile',   plan:'Both',     color:'#e60000', flag:'🇬🇧'},
+  '44077': {carrier:'O2 UK',            op:'O2',  type:'Mobile',   plan:'Both',     color:'#003c8f', flag:'🇬🇧'},
+  '44078': {carrier:'Three UK',         op:'3',   type:'Mobile',   plan:'Both',     color:'#ee2e7b', flag:'🇬🇧'},
+  '44079': {carrier:'O2 / Virgin',      op:'O2',  type:'Mobile',   plan:'Both',     color:'#cc0000', flag:'🇬🇧'},
+  '4401':  {carrier:'UK Landline',      op:'BT',  type:'Landline', plan:'Postpaid', color:'#6600cc', flag:'🇬🇧'},
+  '44800': {carrier:'UK Freephone',     op:'--',  type:'Toll-Free',plan:'N/A',      color:'#663399', flag:'🇬🇧'},
+  /* ═══ USA/CANADA 🇺🇸 ═══ */
+  '1800': {carrier:'US Toll-Free',       op:'--',  type:'Toll-Free',plan:'N/A',     color:'#3c3b6e', flag:'🇺🇸'},
+  '1888': {carrier:'US Toll-Free',       op:'--',  type:'Toll-Free',plan:'N/A',     color:'#3c3b6e', flag:'🇺🇸'},
+  '1877': {carrier:'US Toll-Free',       op:'--',  type:'Toll-Free',plan:'N/A',     color:'#3c3b6e', flag:'🇺🇸'},
+  '1212': {carrier:'AT&T / NYC',         op:'ATT', type:'Landline', plan:'Postpaid',color:'#00a8e0', flag:'🇺🇸'},
+  '1310': {carrier:'T-Mobile / LA',      op:'TMB', type:'Mobile',   plan:'Both',    color:'#e20074', flag:'🇺🇸'},
+  '1415': {carrier:'AT&T / SF',          op:'ATT', type:'Mobile',   plan:'Both',    color:'#00a8e0', flag:'🇺🇸'},
+  /* ═══ UAE 🇦🇪 ═══ */
+  '97150': {carrier:'Etisalat (e&)',     op:'ET',  type:'Mobile',   plan:'Both',    color:'#00732f', flag:'🇦🇪'},
+  '97154': {carrier:'Etisalat (e&)',     op:'ET',  type:'Mobile',   plan:'Both',    color:'#00732f', flag:'🇦🇪'},
+  '97155': {carrier:'Du Mobile',         op:'DU',  type:'Mobile',   plan:'Both',    color:'#d40f7d', flag:'🇦🇪'},
+  '97156': {carrier:'Du Mobile',         op:'DU',  type:'Mobile',   plan:'Both',    color:'#d40f7d', flag:'🇦🇪'},
+  /* ═══ SAUDI ARABIA 🇸🇦 ═══ */
+  '96650': {carrier:'STC',               op:'STC', type:'Mobile',   plan:'Both',    color:'#6200ea', flag:'🇸🇦'},
+  '96653': {carrier:'Mobily',            op:'MB',  type:'Mobile',   plan:'Both',    color:'#ff6d00', flag:'🇸🇦'},
+  '96655': {carrier:'Zain SA',           op:'ZN',  type:'Mobile',   plan:'Both',    color:'#e91e63', flag:'🇸🇦'},
+  /* ═══ MALAYSIA 🇲🇾 ═══ */
+  '601':   {carrier:'MY Mobile',         op:'MY',  type:'Mobile',   plan:'Both',    color:'#cc0001', flag:'🇲🇾'},
+  '60110': {carrier:'Celcom',            op:'CC',  type:'Mobile',   plan:'Both',    color:'#0056a3', flag:'🇲🇾'},
+  '60111': {carrier:'Maxis',             op:'MX',  type:'Mobile',   plan:'Both',    color:'#ff6600', flag:'🇲🇾'},
+  '60112': {carrier:'Digi',              op:'DG',  type:'Mobile',   plan:'Both',    color:'#ffd600', flag:'🇲🇾'},
+  /* ═══ SINGAPORE 🇸🇬 ═══ */
+  '658':   {carrier:'SG Mobile',         op:'SG',  type:'Mobile',   plan:'Both',    color:'#ef3340', flag:'🇸🇬'},
+  '6581':  {carrier:'Singtel',           op:'ST',  type:'Mobile',   plan:'Both',    color:'#d62828', flag:'🇸🇬'},
+  '6582':  {carrier:'StarHub',           op:'SH',  type:'Mobile',   plan:'Both',    color:'#6200ea', flag:'🇸🇬'},
+  '6591':  {carrier:'M1 Limited',        op:'M1',  type:'Mobile',   plan:'Both',    color:'#0097a7', flag:'🇸🇬'},
+  /* ═══ GERMANY 🇩🇪 ═══ */
+  '4915':  {carrier:'T-Mobile DE',       op:'DT',  type:'Mobile',   plan:'Both',    color:'#e20074', flag:'🇩🇪'},
+  '4916':  {carrier:'O2 Germany',        op:'O2',  type:'Mobile',   plan:'Both',    color:'#003c8f', flag:'🇩🇪'},
+  '4917':  {carrier:'Vodafone DE',       op:'VF',  type:'Mobile',   plan:'Both',    color:'#e60000', flag:'🇩🇪'},
+  /* ═══ FRANCE 🇫🇷 ═══ */
+  '336':   {carrier:'Orange FR',         op:'OR',  type:'Mobile',   plan:'Both',    color:'#ff6600', flag:'🇫🇷'},
+  '337':   {carrier:'SFR',               op:'SF',  type:'Mobile',   plan:'Both',    color:'#c00',    flag:'🇫🇷'},
+  /* ═══ AUSTRALIA 🇦🇺 ═══ */
+  '614':   {carrier:'Telstra',           op:'TS',  type:'Mobile',   plan:'Both',    color:'#005faf', flag:'🇦🇺'},
+  '6104':  {carrier:'Optus',             op:'OP',  type:'Mobile',   plan:'Both',    color:'#ff5800', flag:'🇦🇺'},
+  '6104':  {carrier:'Vodafone AU',       op:'VF',  type:'Mobile',   plan:'Both',    color:'#e60000', flag:'🇦🇺'},
+  /* ═══ INDONESIA 🇮🇩 ═══ */
+  '62811': {carrier:'Telkomsel',         op:'TK',  type:'Mobile',   plan:'Both',    color:'#e52b2b', flag:'🇮🇩'},
+  '62812': {carrier:'Telkomsel',         op:'TK',  type:'Mobile',   plan:'Both',    color:'#e52b2b', flag:'🇮🇩'},
+  '62813': {carrier:'Telkomsel',         op:'TK',  type:'Mobile',   plan:'Both',    color:'#e52b2b', flag:'🇮🇩'},
+  '62821': {carrier:'XL Axiata',         op:'XL',  type:'Mobile',   plan:'Both',    color:'#0075be', flag:'🇮🇩'},
+  '62851': {carrier:'Indosat',           op:'IM',  type:'Mobile',   plan:'Both',    color:'#f7a800', flag:'🇮🇩'},
+  /* ═══ JAPAN 🇯🇵 ═══ */
+  '8190':  {carrier:'NTT Docomo',        op:'DC',  type:'Mobile',   plan:'Postpaid',color:'#c00',    flag:'🇯🇵'},
+  '8180':  {carrier:'SoftBank',          op:'SB',  type:'Mobile',   plan:'Both',    color:'#0a539b', flag:'🇯🇵'},
+  '8170':  {carrier:'au (KDDI)',          op:'AU',  type:'Mobile',   plan:'Both',    color:'#e95513', flag:'🇯🇵'},
+  /* ═══ CHINA 🇨🇳 ═══ */
+  '86130': {carrier:'China Telecom',     op:'CT',  type:'Mobile',   plan:'Both',    color:'#007ac2', flag:'🇨🇳'},
+  '86138': {carrier:'China Mobile',      op:'CM',  type:'Mobile',   plan:'Both',    color:'#009900', flag:'🇨🇳'},
+  '86186': {carrier:'China Unicom',      op:'CU',  type:'Mobile',   plan:'Both',    color:'#e3000f', flag:'🇨🇳'},
+};
+
+function getCarrierInfo(plain){
+  // Try longest prefix down to 3
+  for(let len = 6; len >= 3; len--){
+    const k = plain.slice(0, len);
+    if(CDB[k]) return CDB[k];
+  }
+  // Generic fallbacks by type
+  if(['800','888','877','0800','1800'].some(p=>plain.includes(p)))
+    return {carrier:'Toll-Free',op:'--',type:'Toll-Free',plan:'N/A',color:'#9c59d1',flag:'📞'};
+  return null;
+}
+
+function getCountryFromNumber(plain){
+  const checks = [
+    {p:'880',  country:'🇧🇩 Bangladesh',   code:'BD', dialCode:'880'},
+    {p:'44',   country:'🇬🇧 United Kingdom',code:'GB', dialCode:'44'},
+    {p:'91',   country:'🇮🇳 India',         code:'IN', dialCode:'91'},
+    {p:'1',    country:'🇺🇸 USA / Canada',  code:'US', dialCode:'1'},
+    {p:'49',   country:'🇩🇪 Germany',       code:'DE', dialCode:'49'},
+    {p:'33',   country:'🇫🇷 France',        code:'FR', dialCode:'33'},
+    {p:'86',   country:'🇨🇳 China',         code:'CN', dialCode:'86'},
+    {p:'81',   country:'🇯🇵 Japan',         code:'JP', dialCode:'81'},
+    {p:'61',   country:'🇦🇺 Australia',     code:'AU', dialCode:'61'},
+    {p:'971',  country:'🇦🇪 UAE',           code:'AE', dialCode:'971'},
+    {p:'966',  country:'🇸🇦 Saudi Arabia',  code:'SA', dialCode:'966'},
+    {p:'92',   country:'🇵🇰 Pakistan',      code:'PK', dialCode:'92'},
+    {p:'20',   country:'🇪🇬 Egypt',         code:'EG', dialCode:'20'},
+    {p:'62',   country:'🇮🇩 Indonesia',     code:'ID', dialCode:'62'},
+    {p:'60',   country:'🇲🇾 Malaysia',      code:'MY', dialCode:'60'},
+    {p:'65',   country:'🇸🇬 Singapore',     code:'SG', dialCode:'65'},
+    {p:'66',   country:'🇹🇭 Thailand',      code:'TH', dialCode:'66'},
+    {p:'55',   country:'🇧🇷 Brazil',        code:'BR', dialCode:'55'},
+    {p:'7',    country:'🇷🇺 Russia',        code:'RU', dialCode:'7'},
+    {p:'27',   country:'🇿🇦 South Africa',  code:'ZA', dialCode:'27'},
+    {p:'234',  country:'🇳🇬 Nigeria',       code:'NG', dialCode:'234'},
+    {p:'254',  country:'🇰🇪 Kenya',         code:'KE', dialCode:'254'},
+    {p:'90',   country:'🇹🇷 Turkey',        code:'TR', dialCode:'90'},
+    {p:'82',   country:'🇰🇷 South Korea',   code:'KR', dialCode:'82'},
+    {p:'886',  country:'🇹🇼 Taiwan',        code:'TW', dialCode:'886'},
+    {p:'63',   country:'🇵🇭 Philippines',   code:'PH', dialCode:'63'},
+    {p:'84',   country:'🇻🇳 Vietnam',       code:'VN', dialCode:'84'},
+    {p:'94',   country:'🇱🇰 Sri Lanka',     code:'LK', dialCode:'94'},
+    {p:'977',  country:'🇳🇵 Nepal',         code:'NP', dialCode:'977'},
+    {p:'95',   country:'🇲🇲 Myanmar',       code:'MM', dialCode:'95'},
+    {p:'31',   country:'🇳🇱 Netherlands',   code:'NL', dialCode:'31'},
+    {p:'34',   country:'🇪🇸 Spain',         code:'ES', dialCode:'34'},
+    {p:'39',   country:'🇮🇹 Italy',         code:'IT', dialCode:'39'},
+    {p:'46',   country:'🇸🇪 Sweden',        code:'SE', dialCode:'46'},
+    {p:'47',   country:'🇳🇴 Norway',        code:'NO', dialCode:'47'},
+    {p:'48',   country:'🇵🇱 Poland',        code:'PL', dialCode:'48'},
+  ];
+  // Sort by prefix length desc to match longest first
+  checks.sort((a,b)=>b.p.length-a.p.length);
+  for(const c of checks){
+    if(plain.startsWith(c.p)) return c;
+  }
+  return {country:'🌍 Unknown', code:'', dialCode:''};
+}
+
+function formatNum(raw){
+  let n = raw.trim().replace(/\s+/g,'');
+  if(n.startsWith('01') && n.length===11) n = '+880' + n.slice(1);
+  else if(n.startsWith('8801') && n.length===13) n = '+' + n;
+  return n;
+}
+
+function isValidLen(plain, geo){
+  const l = plain.length;
+  const d = geo.dialCode;
+  if(d==='880') return l===12;
+  if(d==='44')  return l>=11 && l<=13;
+  if(d==='91')  return l===12;
+  if(d==='1')   return l===11;
+  if(d==='81')  return l===11 || l===12;
+  if(d==='82')  return l===11 || l===12;
+  return l>=8 && l<=15;
+}
+
+function planBadge(plan){
+  if(!plan||plan==='N/A') return `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--t3)">N/A</span>`;
+  if(plan==='Postpaid')   return `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(126,184,255,.12);border:1px solid rgba(126,184,255,.25);color:var(--blue)">POSTPAID</span>`;
+  if(plan==='Prepaid')    return `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(125,255,179,.1);border:1px solid rgba(125,255,179,.2);color:var(--green)">PREPAID</span>`;
+  if(plan==='Both')       return `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,216,122,.1);border:1px solid rgba(255,216,122,.2);color:var(--gold)">PRE/POST</span>`;
+  return '';
+}
+
+function renderCard(formatted, plain, geo, carrier, source, apiData){
+  const valid = isValidLen(plain, geo);
+  const encoded = encodeURIComponent(formatted);
+  const c = carrier || (apiData ? {carrier: apiData.carrier||'Unknown', op:'', type: apiData.line_type||'Mobile', plan:'Unknown', color:'#9c59d1', flag:''} : null);
+
+  // Determine plan confidence
+  const planConf = (source==='api') ? '🔵 API verified' : (c && c.plan!=='Both' && c.plan!=='Unknown') ? '🟡 Prefix estimate' : '⚪ Unknown';
+
+  return `
+  <div class="ecard vis" id="ph-card">
+    <div class="ecard-hdr">
+      <span class="ecard-ico">📞</span>
+      <div style="flex:1;min-width:0">
+        <div class="ecard-title">電話番号分析</div>
+        <div class="ecard-sub" style="font-family:var(--mono);font-size:10px">${formatted}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:7px;background:${valid?'var(--green-dim)':'rgba(255,216,122,.1)'};border:1px solid ${valid?'rgba(125,255,179,.2)':'rgba(255,216,122,.2)'};color:${valid?'var(--green)':'var(--gold)'}">
+          ${valid?'✓ VALID':'⏳ TYPING'}
+        </span>
+        <span style="font-family:var(--mono);font-size:8px;color:var(--t3)">${source==='api'?'🔵 numverify':'🟡 local DB'}</span>
+      </div>
+    </div>
+    <div class="ecard-body">
+
+      <!-- INFO GRID -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px">
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Country</div>
+          <div class="pinfo-val" style="font-size:13px">${apiData ? (apiData.country_name||geo.country) : geo.country}</div>
+        </div>
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Carrier / Operator</div>
+          <div class="pinfo-val" style="font-size:13px;font-weight:800;color:${c?c.color:'var(--t2)'}">
+            ${c ? c.carrier : '<span style="color:var(--t3)">Unknown</span>'}
+          </div>
+        </div>
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Line Type</div>
+          <div class="pinfo-val blue" style="font-size:13px">${c ? c.type : (apiData ? (apiData.line_type||'—') : '—')}</div>
+        </div>
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Plan Type</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+            ${c ? planBadge(c.plan) : planBadge('Unknown')}
+          </div>
+          <div style="font-size:9px;color:var(--t3);margin-top:3px;font-family:var(--mono)">${planConf}</div>
+        </div>
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Location</div>
+          <div class="pinfo-val" style="font-size:12px;color:var(--teal)">${apiData ? ((apiData.location||'')+(apiData.location?', ':'')+apiData.country_name) : (geo.country||'—')}</div>
+        </div>
+
+        <div class="pinfo-box">
+          <div class="pinfo-lbl">Dial Code · Digits</div>
+          <div class="pinfo-val gold" style="font-size:13px">+${geo.dialCode||'?'} · ${plain.length}</div>
+        </div>
+
+      </div>
+
+      ${valid ? `
+      <!-- CALLER LOOKUP -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;padding:8px 12px;background:var(--sakura-dim);border:1px solid rgba(255,107,157,.15);border-radius:10px">
+        <span style="font-size:13px">🕵️</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--sakura2);letter-spacing:.05em">CALLER IDENTITY LOOKUP</span>
+      </div>
+      <div class="lookup-links">
+        <a class="lookup-link" href="https://www.truecaller.com/search/${geo.code}/${plain}" target="_blank" rel="noopener">
+          <span class="ll-icon">🔍</span><div class="ll-body"><div class="ll-name">Truecaller</div><div class="ll-desc">Caller name, spam score — 300M+ database</div></div><span class="ll-arrow">↗</span>
+        </a>
+        <a class="lookup-link" href="https://sync.me/search/?number=${encoded}" target="_blank" rel="noopener">
+          <span class="ll-icon">🌐</span><div class="ll-body"><div class="ll-name">Sync.me</div><div class="ll-desc">Name from contacts + social media</div></div><span class="ll-arrow">↗</span>
+        </a>
+        <a class="lookup-link" href="https://www.numlookup.com/?number=${encoded}" target="_blank" rel="noopener">
+          <span class="ll-icon">📋</span><div class="ll-body"><div class="ll-name">NumLookup</div><div class="ll-desc">Carrier, owner, risk score — free</div></div><span class="ll-arrow">↗</span>
+        </a>
+        <a class="lookup-link" href="https://www.spokeo.com/reverse-phone-lookup/${plain}" target="_blank" rel="noopener">
+          <span class="ll-icon">👤</span><div class="ll-body"><div class="ll-name">Spokeo</div><div class="ll-desc">Name, age, address, social media</div></div><span class="ll-arrow">↗</span>
+        </a>
+        <a class="lookup-link" href="https://www.whocalld.com/+${plain}" target="_blank" rel="noopener">
+          <span class="ll-icon">⚠️</span><div class="ll-body"><div class="ll-name">WhoCalld</div><div class="ll-desc">Spam/scam reports & user reviews</div></div><span class="ll-arrow">↗</span>
+        </a>
+        <a class="lookup-link" href="https://www.shouldianswer.com/phone-number/${plain}" target="_blank" rel="noopener">
+          <span class="ll-icon">🛡️</span><div class="ll-body"><div class="ll-name">Should I Answer?</div><div class="ll-desc">Community spam/scam safety rating</div></div><span class="ll-arrow">↗</span>
+        </a>
+      </div>
+      <div class="note-txt" style="margin-top:10px">⚠️ Public services only. Use responsibly.</div>
+      ` : `<div class="srow s-load" style="font-size:12px">⏳ Keep typing to complete the number…</div>`}
+    </div>
+  </div>`;
+}
+
+let phoneTimer = null;
+
+function autoPhone(val){
+  clearTimeout(phoneTimer);
+  const v = val.trim();
+  const pr = document.getElementById('p-res');
+  if(v.length < 4){
+    pr.innerHTML = `<div class="empty"><span class="empty-ic">📞</span><span class="empty-txt">// 電話番号を入力してください</span></div>`;
+    return;
+  }
+  const formatted = formatNum(v);
+  const plain = formatted.replace(/[^0-9]/g,'');
+  const geo = getCountryFromNumber(plain);
+  const carrier = getCarrierInfo(plain);
+
+  // Instant local render on every keystroke
+  if(v.length >= 5){
+    pr.innerHTML = renderCard(formatted, plain, geo, carrier, 'local', null);
+  }
+
+  // After 700ms of no typing → try Numverify API
+  if(v.length >= 7){
+    phoneTimer = setTimeout(()=> callNumverify(formatted, plain, geo, carrier), 700);
+  }
+}
+
+async function callNumverify(formatted, plain, geo, carrier){
+  const key = loadKey();
+  if(!key){
+    // No key — just show local result with tip
+    const pr = document.getElementById('p-res');
+    const existing = document.getElementById('ph-card');
+    if(existing){
+      const note = existing.querySelector('.note-txt');
+      if(note && !existing.querySelector('.api-tip')){
+        note.insertAdjacentHTML('beforebegin',
+          `<div class="api-tip" style="margin-bottom:8px;padding:8px 12px;background:var(--gold-dim);border:1px solid rgba(255,216,122,.18);border-radius:9px;font-size:11px;font-family:var(--mono);color:var(--gold)">
+            💡 Add Numverify API key above for carrier verification · <a href="https://numverify.com" target="_blank" style="color:var(--sakura2)">Get free key ↗</a>
+          </div>`);
+      }
+    }
+    return;
+  }
+  try {
+    // Numverify free plan requires http but we try https
+    const url = `https://apilayer.net/api/validate?access_key=${key}&number=${encodeURIComponent(plain)}&country_code=&format=1`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('API error');
+    const data = await res.json();
+    if(data.valid !== undefined){
+      // Merge API data with local carrier (local plan data stays)
+      const mergedCarrier = carrier ? {...carrier, carrier: data.carrier||carrier.carrier} : {carrier: data.carrier||'Unknown', op:'', type: data.line_type||'Mobile', plan:'Unknown', color:'#9c59d1', flag:''};
+      document.getElementById('p-res').innerHTML = renderCard(formatted, plain, geo, mergedCarrier, 'api', data);
+    }
+  } catch(e){
+    // API failed silently — local result already showing
+    console.log('Numverify fallback to local DB');
+  }
+}
+
+function doPhone(){
+  autoPhone(document.getElementById('p-inp').value);
+}
+
+function saveKey(v){
+  try{ localStorage.setItem('nmv_key', v.trim()); } catch(e){}
+}
+function loadKey(){
+  try{ return localStorage.getItem('nmv_key')||''; } catch(e){ return ''; }
+}
+// ══════════════════════════════════
+//  MD5
+// ══════════════════════════════════
+function md5js(s){
+  function L(k,d){return(k<<d)|(k>>>(32-d))}
+  function K(q,a,b,x,s,t){a=((((a+q)&0xFFFFFFFF)+((x+t)&0xFFFFFFFF))&0xFFFFFFFF);return(((L(a,s)+b)&0xFFFFFFFF));}
+  function U(q,a,b,x,s,t){return K((b&a)|((~b)&q),a,b,x,s,t);}
+  function V(q,a,b,x,s,t){return K((b&q)|(a&(~q)),a,b,x,s,t);}
+  function W(q,a,b,x,s,t){return K(b^a^q,a,b,x,s,t);}
+  function X(q,a,b,x,s,t){return K(a^(b|(~q)),a,b,x,s,t);}
+  var a8=unescape(encodeURIComponent(s));var b=[];
+  for(var i=0;i<a8.length;i++)b.push(a8.charCodeAt(i));
+  b.push(128);while(b.length%64!==56)b.push(0);
+  var len=a8.length*8;b.push(len&0xff,(len>>8)&0xff,(len>>16)&0xff,(len>>24)&0xff,0,0,0,0);
+  var w=[];for(var i=0;i<b.length;i+=4)w.push(b[i]|(b[i+1]<<8)|(b[i+2]<<16)|(b[i+3]<<24));
+  var a=1732584193,bv=-271733879,c=-1732584194,d=271733878;
+  for(var i=0;i<w.length;i+=16){
+    var A=a,B=bv,C=c,D=d;
+    a=U(a,bv,c,d,w[i],7,-680876936);d=U(d,a,bv,c,w[i+1],12,-389564586);c=U(c,d,a,bv,w[i+2],17,606105819);bv=U(bv,c,d,a,w[i+3],22,-1044525330);
+    a=U(a,bv,c,d,w[i+4],7,-176418897);d=U(d,a,bv,c,w[i+5],12,1200080426);c=U(c,d,a,bv,w[i+6],17,-1473231341);bv=U(bv,c,d,a,w[i+7],22,-45705983);
+    a=U(a,bv,c,d,w[i+8],7,1770035416);d=U(d,a,bv,c,w[i+9],12,-1958414417);c=U(c,d,a,bv,w[i+10],17,-42063);bv=U(bv,c,d,a,w[i+11],22,-1990404162);
+    a=U(a,bv,c,d,w[i+12],7,1804603682);d=U(d,a,bv,c,w[i+13],12,-40341101);c=U(c,d,a,bv,w[i+14],17,-1502002290);bv=U(bv,c,d,a,w[i+15],22,1236535329);
+    a=V(a,bv,c,d,w[i+1],5,-165796510);d=V(d,a,bv,c,w[i+6],9,-1069501632);c=V(c,d,a,bv,w[i+11],14,643717713);bv=V(bv,c,d,a,w[i],20,-373897302);
+    a=V(a,bv,c,d,w[i+5],5,-701558691);d=V(d,a,bv,c,w[i+10],9,38016083);c=V(c,d,a,bv,w[i+15],14,-660478335);bv=V(bv,c,d,a,w[i+4],20,-405537848);
+    a=V(a,bv,c,d,w[i+9],5,568446438);d=V(d,a,bv,c,w[i+14],9,-1019803690);c=V(c,d,a,bv,w[i+3],14,-187363961);bv=V(bv,c,d,a,w[i+8],20,1163531501);
+    a=V(a,bv,c,d,w[i+13],5,-1444681467);d=V(d,a,bv,c,w[i+2],9,-51403784);c=V(c,d,a,bv,w[i+7],14,1735328473);bv=V(bv,c,d,a,w[i+12],20,-1926607734);
+    a=W(a,bv,c,d,w[i+5],4,-378558);d=W(d,a,bv,c,w[i+8],11,-2022574463);c=W(c,d,a,bv,w[i+11],16,1839030562);bv=W(bv,c,d,a,w[i+14],23,-35309556);
+    a=W(a,bv,c,d,w[i+1],4,-1530992060);d=W(d,a,bv,c,w[i+4],11,1272893353);c=W(c,d,a,bv,w[i+7],16,-155497632);bv=W(bv,c,d,a,w[i+10],23,-1094730640);
+    a=W(a,bv,c,d,w[i+13],4,681279174);d=W(d,a,bv,c,w[i],11,-358537222);c=W(c,d,a,bv,w[i+3],16,-722521979);bv=W(bv,c,d,a,w[i+6],23,76029189);
+    a=W(a,bv,c,d,w[i+9],4,-640364487);d=W(d,a,bv,c,w[i+12],11,-421815835);c=W(c,d,a,bv,w[i+15],16,530742520);bv=W(bv,c,d,a,w[i+2],23,-995338651);
+    a=X(a,bv,c,d,w[i],6,-198630844);d=X(d,a,bv,c,w[i+7],10,1126891415);c=X(c,d,a,bv,w[i+14],15,-1416354905);bv=X(bv,c,d,a,w[i+5],21,-57434055);
+    a=X(a,bv,c,d,w[i+12],6,1700485571);d=X(d,a,bv,c,w[i+3],10,-1894986606);c=X(c,d,a,bv,w[i+10],15,-1051523);bv=X(bv,c,d,a,w[i+1],21,-2054922799);
+    a=X(a,bv,c,d,w[i+8],6,1873313359);d=X(d,a,bv,c,w[i+15],10,-30611744);c=X(c,d,a,bv,w[i+6],15,-1560198380);bv=X(bv,c,d,a,w[i+13],21,1309151649);
+    a=X(a,bv,c,d,w[i+4],6,-145523070);d=X(d,a,bv,c,w[i+11],10,-1120210379);c=X(c,d,a,bv,w[i+2],15,718787259);bv=X(bv,c,d,a,w[i+9],21,-343485551);
+    a=(a+A)&0xFFFFFFFF;bv=(bv+B)&0xFFFFFFFF;c=(c+C)&0xFFFFFFFF;d=(d+D)&0xFFFFFFFF;
+  }
+  function H(n){var s='';for(var j=0;j<4;j++)s+=('0'+((n>>>(j*8))&0xFF).toString(16)).slice(-2);return s;}
+  return H(a)+H(bv)+H(c)+H(d);
+}
+
+document.getElementById('u-inp').focus();
+// Load saved API key
+(function(){
+  const k = loadKey();
+  const stored = k || '835bc3ad9fbe6db769b5c8a3e0380575';
+  if(stored) {
+    document.getElementById('numverify-key').value = stored;
+    saveKey(stored);
+  }
+})();
+</script>
+</body>
+</html>
